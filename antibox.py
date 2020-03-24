@@ -1,15 +1,15 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import os
+import datetime
 import getopt
+import json
+import os
 import random as rnd
 import sys
-import json
-import datetime
 
 import requests
 
-from const import *
+from const import VERBOSITY_MODES, HELPMSG
 
 USER = os.getenv('ALTIBOX_USER')
 PASS = os.getenv('ALTIBOX_PASS')
@@ -18,6 +18,10 @@ mac = os.getenv('DEVICE_MAC')
 fw_rule = os.getenv('RULE_NAME')
 
 VERBOSITY = 1
+if os.getenv('VERBOSITY'):
+    level = [ k for k,v in VERBOSITY_MODES.items() if v == os.getenv('VERBOSITY') ]
+    if level:
+        VERBOSITY = level[0]
 
 BASE_URL = 'https://www.altibox.no/api'
 PATHS = {

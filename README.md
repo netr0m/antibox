@@ -1,3 +1,7 @@
+![Docker Stars Shield](https://img.shields.io/docker/stars/mortea15/antibox.svg?style=flat-square)
+![Docker Pulls Shield](https://img.shields.io/docker/pulls/mortea15/antibox.svg?style=flat-square)
+[![GitHub license](https://img.shields.io/badge/license-wtfpl-blue.svg?style=flat-square)](https://raw.githubusercontent.com/mortea15/antibox/master/LICENSE)
+
 # Antibox
 *A CLI tool to update [Altibox](https://www.altibox.no) firewall settings*
 

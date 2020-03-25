@@ -1,8 +1,8 @@
-FROM python
+FROM python:3-alpine
 
 LABEL maintainer="Morten Amundsen <me@mortenamundsen.me>"
 
-RUN apt-get update && apt-get -y install cron busybox
+RUN apk add --update busybox
 
 RUN mkdir -p /usr/src/app
 WORKDIR /usr/src/app
@@ -12,8 +12,6 @@ RUN pip install -r requirements.txt
 
 COPY . /usr/src/app
 
-RUN chmod 0644 /usr/src/app
-COPY crontab /etc/crontab
-RUN chmod 600 /etc/crontab
+RUN cat crontab >> /etc/crontabs/root
 
-CMD env >> /etc/environment && busybox syslogd && cron -f
+CMD env >> /etc/environment && busybox syslogd && crond -f

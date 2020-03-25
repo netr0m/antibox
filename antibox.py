@@ -178,9 +178,9 @@ def get_device(hostname=None, mac=None):
                 else:
                     err = f'GET_DEVICE => No `hostname` or `MAC` specified.'
                     raise AttributeError(err)
-                client = filter(lambda c: c.get(key) == val, clients)
+                client = list(filter(lambda c: c.get(key) == val, clients))
                 if client:
-                    client = list(client)[0]
+                    client = client[0]
                     log(f'GET_DEVICE => Found client (src={key}:{val}).', 2)
                     log(f'  {client}', 2)
                     return client

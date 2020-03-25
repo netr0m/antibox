@@ -90,9 +90,9 @@ $ python3 antibox.py
 $ chmod a+x antibox.py
 $ crontab -e
 # Run every 10th minute, on-host:
-$ */10 * * * * /usr/local/bin/python <path_to_dir>/antibox.py
+*/10 * * * * /usr/local/bin/python <path_to_dir>/antibox.py
 # Run every day at 1 AM, containerized:
-$ 0 1 * * * docker run --rm -d --name antibox --env-file list.env mortea15/antibox
+0 1 * * * docker run --rm -d --name antibox --env-file list.env mortea15/antibox
 ```
 
 ### Docker
@@ -125,6 +125,7 @@ $ docker build -t antibox .
 
 **With Cron**
 - [Dockerfile](/Dockerfile.cron)
+
 *If you wish to change the frequency, modify the file [crontab](/crontab) before building.*
 ```bash
 $ docker build -t antibox:cron -f Dockerfile.cron .
@@ -137,5 +138,6 @@ $ docker build -t antibox:cron -f Dockerfile.cron .
 - **DEVICE_NAME:**  Name of the device to fetch the IP of
 - **DEVICE_MAC:**   MAC of the device to fetch the IP of
 - **RULE_NAME:**    Name of the firewall rule to modify
+- **ANTIBOX_ALL:**  A comma-separated list of rules to modify. See above for usage.
 - **VERBOSITY:**    Set the verbosity [ERROR, INFO, DEBUG]
 - **LOGPATH:**      Specify a directory to write logfiles to    

@@ -23,6 +23,13 @@ if os.getenv('VERBOSITY'):
     if level:
         VERBOSITY = level[0]
 
+LOGPATH = os.getcwd()
+if os.getenv('LOGPATH'):
+    path = os.getenv('LOGPATH')
+    if os.path.isdir(path):
+        LOGPATH = path
+
+
 BASE_URL = 'https://www.altibox.no/api'
 PATHS = {
     'auth': '/authentication/authenticate',
@@ -51,7 +58,11 @@ def log(message, level):
         if level_str == 'INFO':
             level_str += ' '
         now = datetime.datetime.now()
-        print(f'{now} | {level_str} | {message}')
+        msg = f'{now} | {level_str} | {message}'
+        print(msg)
+        if LOGPATH:
+            with open(LOGPATH + '/antibox.log', 'a') as f:
+                f.write(f'{msg}\n')
 
 
 def prepare_config(config):
@@ -263,14 +274,14 @@ def main():
                 current_rule_ip = get_firewall_rule_ip(fw_rule, config)
                 if current_rule_ip == device.get('ipAddress').split('.')[3]:
                     log(f'RULE => Firewall rule `{fw_rule}` was updated successfully.', 2)
-                    print('OK')
+                    log('OK', -1)
                     sys.exit(0)
                 else:
                     err = f'SET_RULE => The firewall rule IP was not updated properly.'
                     raise RuntimeError(err)
             else:
                 log(f'SET_RULE => Firewall rule IP already up to date. Exiting.', 2)
-                print('OK')
+                log('OK', -1)
                 sys.exit(0)
         else:
             missing = [val for val in [hostname, mac, fw_rule] if val is None]
@@ -285,7 +296,7 @@ if __name__ == '__main__':
     argv = sys.argv[1:]
 
     try:
-        opts, args = getopt.getopt(argv, 'h:m:r:v:', ['hostname=', 'mac=', 'rule=', 'verbosity=', 'help'])
+        opts, args = getopt.getopt(argv, 'h:m:r:v:l:', ['hostname=', 'mac=', 'rule=', 'verbosity=', 'logpath=', 'help'])
     except getopt.GetoptError:
         print(HELPMSG)
         sys.exit(2)
@@ -305,8 +316,15 @@ if __name__ == '__main__':
                 level = {l: mode for l, mode in VERBOSITY_MODES.items() if mode == arg}
                 VERBOSITY = list(level.keys())[0]
             else:
-                log(f'Invalid mode for verbosity `{arg}. Setting to default `INFO`.', 1)
+                log(f'LOGGER => Invalid mode for verbosity `{arg}`. Setting to default `INFO`.', 1)
                 VERBOSITY = 1
+        elif opt in ('-l', '--logpath'):
+            if os.path.isdir(arg):
+                LOGPATH = arg
+                log(f'LOGGER => Logging to file enabled. Writing to `{LOGPATH}`.', 2)
+            else:
+                cwd = os.getcwd()
+                log(f'LOGGER => Invalid path for logpath `{arg}`. Setting to default (CWD) `{cwd}`', 0)
 
     if (hostname or mac) and fw_rule:
         main()

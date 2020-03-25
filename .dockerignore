@@ -127,6 +127,6 @@ pip-selfcheck.json
 
 *.env
 .env/
-Dockerfile
+Dockerfile*
 docker-compose.yml
 containerInfo.json

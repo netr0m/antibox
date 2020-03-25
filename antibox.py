@@ -101,7 +101,6 @@ def authenticate():
                 user = data.get('user')
                 log(f'AUTH => Authentication successful.', 2)
                 log(f'  Authenticated as {user.get("firstName")} {user.get("lastName")}.', 2)
-                log(f'  Using SessionToken `{session}.', 2)
                 return session, user
             else:
                 err = f'AUTH => Altibox: {data.get("message")}.'

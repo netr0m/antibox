@@ -1,1 +1,1 @@
-*/1 * * * * root /usr/local/bin/python /usr/src/app/antibox.py
+*/1     *       *       *       *       /usr/local/bin/python /usr/src/app/antibox.py

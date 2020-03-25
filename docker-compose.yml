@@ -1,11 +1,14 @@
-version: 3
+version: "3"
 services:
     antibox:
         image: mortea15/antibox
         container_name: antibox
-        environment:
-            - ALTIBOX_USER=${ALTIBOX_USER}
-            - ALTIBOX_PASS=${ALTIBOX_PASS}
-            - DEVICE_NAME=${DEVICE_NAME}
-            - DEVICE_MAC=${DEVICE_MAC}
-            - RULE_NAME=${RULE_NAME}
+        env_file:
+            - list.env
+
+    antibox_cron:
+        image: mortea15/antibox:cron
+        container_name: antibox_cron
+        restart: always
+        env_file:
+            - list.env

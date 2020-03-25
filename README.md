@@ -33,8 +33,8 @@
 ### CLI
 ```bash
 $ python3 antibox.py --help
-antibox v0.1.0
-usage: antibox (-h <HOSTNAME> | -m <MAC_ADDRESS>) -r <RULE_NAME> [-v <(ERROR|INFO|DEBUG)>] [--help]
+antibox v0.2.0
+usage: antibox (-h <HOSTNAME> | -m <MAC_ADDRESS>) -r <RULE_NAME> [-v <(ERROR|INFO|DEBUG)>] [-l <PATH>] [--help]
 
     Get current IP of device
       -h, --hostname          By hostname
@@ -44,6 +44,8 @@ usage: antibox (-h <HOSTNAME> | -m <MAC_ADDRESS>) -r <RULE_NAME> [-v <(ERROR|INF
 
       -v, --verbosity         Set the verbosity.
                                 Available options: [ERROR, INFO, DEBUG]
+      -l, --logpath           Path to the directory for log files
+
       --help                  Print this message
 ```
 
@@ -56,7 +58,11 @@ $ python3 antibox.py -m <mac> -r <rule>
 # Change the verbosity
 $ python3 antibox.py -h <hostname> -r <rule> -v DEBUG
 
+# Log to file
+$ python3 antibox.py -h <hostname> -r <rule> -v DEBUG -l /path/to/dir
+
 # Get hostname/MAC and rule from environment variables:
+$ source vars.env
 $ python3 antibox.py
 ```
 
@@ -68,22 +74,53 @@ $ python3 antibox.py
 $ chmod a+x antibox.py
 $ crontab -e
 # Run every 10th minute, on-host:
-$ */10 * * * * /usr/bin/python <path_to_dir>/antibox.py
+$ */10 * * * * /usr/local/bin/python <path_to_dir>/antibox.py
 # Run every day at 1 AM, containerized:
 $ 0 1 * * * docker run --rm -d --name antibox --env-file list.env mortea15/antibox
 ```
 
 ### Docker
+**Runs the script in a Docker container for a one-time execution**
 ```bash
+# Get params from the file `list.env`
 $ docker run --rm -d --name antibox --env-file list.env mortea15/antibox
+# Add CLI params
 $ docker run --rm -d --name antibox --env-file list.env mortea15/antibox python antibox.py -v DEBUG
+# Use CLI params only, no env file.
+$ docker run --rm -d --name antibox mortea15/antibox python antibox.py -h <HOSTNAME> -r <RULE> -v DEBUG -l /var/log
+# Run using the [docker-compose.yml](/docker-compose.yml) file
 $ docker-compose up -d
+```
+
+#### Cron in Docker
+**Runs a Docker container pre-configured with Cron**
+- Executes the script every 10th minute
+- Requires environment variables to be provided using `list.env` (see [list.env.example](/list.env.example))
+```bash
+$ docker run --rm -d --name antibox --env-file list.env mortea15/antibox:cron
+```
+
+#### Build the images from source
+**Antibox**
+- [Dockerfile](/Dockerfile)
+```bash
+$ docker build -t antibox .
+```
+
+**With Cron**
+- [Dockerfile](/Dockerfile.cron)
+
+*If you wish to change the frequency, modify the file [crontab](/crontab) before building.*
+```bash
+$ docker build -t antibox:cron -f Dockerfile.cron .
 ```
 
 ## Additional
 ### Environment variables
-- **ALTIBOX_USER:**   Username/email for your Altibox account
-- **ALTIBOX_PASS:**   Password
-- **DEVICE_NAME:**    Name of the device to fetch the IP of
-- **DEVICE_MAC:**     MAC of the device to fetch the IP of
-- **RULE_NAME:**      Name of the firewall rule to modify
+- **ALTIBOX_USER:** Username/email for your Altibox account
+- **ALTIBOX_PASS:** Password
+- **DEVICE_NAME:**  Name of the device to fetch the IP of
+- **DEVICE_MAC:**   MAC of the device to fetch the IP of
+- **RULE_NAME:**    Name of the firewall rule to modify
+- **VERBOSITY:**    Set the verbosity [ERROR, INFO, DEBUG]
+- **LOGPATH:**      Specify a directory to write logfiles to    

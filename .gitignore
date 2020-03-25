@@ -127,3 +127,4 @@ pip-selfcheck.json
 
 *.env
 .env/
+*.log

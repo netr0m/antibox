@@ -9,13 +9,15 @@ import sys
 
 import requests
 
-from const import VERBOSITY_MODES, HELPMSG
+from const import HELPMSG, VERBOSITY_MODES
 
 USER = os.getenv('ALTIBOX_USER')
 PASS = os.getenv('ALTIBOX_PASS')
-hostname = os.getenv('DEVICE_NAME')
-mac = os.getenv('DEVICE_MAC')
-fw_rule = os.getenv('RULE_NAME')
+HOSTNAME = os.getenv('DEVICE_NAME')
+MAC_ADDR = os.getenv('DEVICE_MAC')
+FW_RULE = os.getenv('RULE_NAME')
+ALL = os.getenv('ANTIBOX_ALL')
+ENTRIES = []
 
 VERBOSITY = 1
 if os.getenv('VERBOSITY'):
@@ -66,6 +68,18 @@ def log(message, level):
 
 
 def prepare_config(config):
+    """Adds missing attributes and changes incorrect data types
+
+        Parameters
+        ----------
+        config : obj
+            The Altibox config to process.
+
+        Returns
+        -------
+        config : str
+            A JSON string representing the Altibox config.
+    """
     config['wifiBand2IsSet'] = True
     config['wifiBand5IsSet'] = True
 
@@ -81,11 +95,25 @@ def prepare_config(config):
     for key, val in wifis.items():
         wifis[key]['currentChannelIsOver48'] = False
         wifis[key]['hasMultipleWifi'] = True
-    
-    return json.dumps(config)
+    config = json.dumps(config)
+
+    return config
 
 
 def authenticate():
+    """Authenticates the user against the Altibox API.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        session : str
+            A string containing the SessionToken for the API.
+
+        user : obj
+            An object representing the authenticated user.
+    """
     if USER and PASS:
         url = BASE_URL + PATHS.get('auth') + '?method=BY_USERNAME'
         auth = (USER, PASS)
@@ -115,6 +143,21 @@ def authenticate():
 
 
 def get_device(hostname=None, mac=None):
+    """Fetches a device from the API by either hostname or MAC address.
+
+        Parameters
+        ----------
+        hostname : str
+            The hostname of the device to fetch.
+
+        mac : str
+            The MAC address of the device to fetch.
+
+        Returns
+        -------
+        client : obj
+            An object representing the device.
+    """
     if COOKIE.get('sessionTicketApi'):
         url = BASE_URL + PATHS.get('devices') + '?activeOnly=false&siteid=2373251&_=1585042725601'
         HEADERS['Referer'] = 'https://www.altibox.no/mine-sider/internett/min-hjemmesentral/'
@@ -157,6 +200,21 @@ def get_device(hostname=None, mac=None):
 
 
 def get_firewall_rule_ip(firewall_rule_name, config):
+    """Fetches the IP address currently associated with the firewall rule.
+
+        Parameters
+        ----------
+        firewall_rule_name : str
+            The name of the firewall rule to fetch.
+
+        config : obj
+            The Altibox config to parse.
+
+        Returns
+        -------
+        internal_ip : str
+            A string containing the last part of the IP address.
+    """
     routes = config.get('router').get('routes')
     rule = {key: val for key, val in routes.items() if val.get('name') == firewall_rule_name}
     if rule:
@@ -164,13 +222,31 @@ def get_firewall_rule_ip(firewall_rule_name, config):
         log(f'GET_RULE => Found rule (src=name:{firewall_rule_name}).', 2)
         log(f'  {rule}', 2)
         log(f'  {rule.get("type")}://{rule.get("ext_from")}-{rule.get("ext_to")} => X.X.X.{rule.get("int_ip")}:{rule.get("int_from")}-{rule.get("int_to")}', 2)
-        return rule.get('int_ip')
+        internal_ip = rule.get('int_ip')
+
+        return internal_ip
     else:
         err = f'GET_RULE => No rule found by filter `name={firewall_rule_name}`.'
         raise AttributeError(err)
 
 
 def set_firewall_rule_ip(firewall_rule_name, ip, config):
+    """Updates the IP address currently associated with the firewall rule.
+
+        Parameters
+        ----------
+        firewall_rule_name : str
+            The name of the firewall rule to fetch.
+
+        ip : str
+            The last part of the IP address to use.
+
+        config : obj
+            The Altibox config to parse.
+
+        Returns
+        -------
+    """
     if COOKIE.get('sessionTicketApi') and HEADERS.get('SessionTicket'):
         url = BASE_URL + PATHS.get('fw')
         HEADERS['Referer'] = 'https://www.altibox.no/mine-sider/internett/min-hjemmesentral/'
@@ -222,6 +298,16 @@ def set_firewall_rule_ip(firewall_rule_name, ip, config):
 
 
 def get_config():
+    """Fetches the config from the Altibox API.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        config : obj
+            An object representing the Altibox config.
+    """
     if COOKIE.get('sessionTicketApi') and HEADERS.get('SessionTicket'):
         url = BASE_URL + PATHS.get('config') + '?siteid=2373251&_=1585046386097'
         HEADERS['Referer'] = 'https://www.altibox.no/mine-sider/internett/min-hjemmesentral/'
@@ -234,7 +320,9 @@ def get_config():
             if data:
                 if data.get('status') == 'success':
                     data = data.get('data')
-                    return list(data.values())[0]
+                    config = list(data.values())[0]
+
+                    return config
                 else:
                     err = f'GET_CONFIG => Altibox: {data.get("message")}.'
                     raise RuntimeError(err)
@@ -250,7 +338,48 @@ def get_config():
         raise AttributeError(err)
 
 
+def prepare_multi(multi):
+    """Processes the formatted string and generates a list of rules to update.
+
+        Parameters
+        ----------
+        multi : str
+            A comma-separated string of devices and rules to update.
+            Format:     `devicename|mac|rule`.
+            Example:    `mediaserver||plex_rule,|4A:DA:61:1C:B5:24|vpn_rule`.
+
+        Returns
+        -------
+    """
+    if not ENTRIES:
+        multi = multi.split(',')
+        log(f'MULTI => Found {len(multi)} entries.', 2)
+        for entry in multi:
+            entry = entry.split('|')
+            if len(entry) == 3:
+                ENTRIES.append({
+                    'hostname': entry[0],
+                    'mac': entry[1],
+                    'rule': entry[2]
+                })
+            else:
+                log(f'MULTI => Entry {entry} does not follow the required format. Skipping.', 0)
+
+
 def set_cookie(session, user):
+    """Handles setting the cookie and headers required for authenticated requests.
+
+        Parameters
+        ----------
+        session : str
+            The SessionToken to use.
+
+        user : obj
+            The user object to use.
+
+        Returns
+        -------
+    """
     if COOKIE:
         COOKIE['sessionTicketApi'] = session
         COOKIE['user'] = str(user)
@@ -258,7 +387,23 @@ def set_cookie(session, user):
         HEADERS['SessionTicket'] = session
 
 
-def main():
+def run(hostname=None, mac=None, fw_rule=None):
+    """Runs the script for updating a rule.
+
+        Parameters
+        ----------
+        hostname : str
+            The hostname of the device to fetch the IP of.
+
+        mac : str
+            The MAC address of the device to fetch the IP of.
+
+        fw_rule : str
+            The name of the firewall rule to update.
+
+        Returns
+        -------
+    """
     try:
         if (hostname or mac) and fw_rule:
             session, user = authenticate()
@@ -273,15 +418,13 @@ def main():
                 current_rule_ip = get_firewall_rule_ip(fw_rule, config)
                 if current_rule_ip == device.get('ipAddress').split('.')[3]:
                     log(f'RULE => Firewall rule `{fw_rule}` was updated successfully.', 2)
-                    log('OK', -1)
-                    sys.exit(0)
+                    log(f'OK {fw_rule}', -1)
                 else:
                     err = f'SET_RULE => The firewall rule IP was not updated properly.'
                     raise RuntimeError(err)
             else:
                 log(f'SET_RULE => Firewall rule IP already up to date. Exiting.', 2)
-                log('OK', -1)
-                sys.exit(0)
+                log(f'OK {fw_rule}', -1)
         else:
             missing = [val for val in [hostname, mac, fw_rule] if val is None]
             err = f'Missing attribute(s) `{missing}'
@@ -291,11 +434,28 @@ def main():
         sys.exit(2)
 
 
+def main():
+    if ENTRIES:
+        log(f'MAIN => Updating rules for {len(ENTRIES)} entries.', 2)
+        for entry in ENTRIES:
+            log(f'MAIN => Running update for {entry.get("rule")}.', 2)
+            run(hostname=entry.get('hostname'), mac=entry.get('mac'), fw_rule=entry.get('rule'))
+        log(f'MAIN => Finished updating {len(ENTRIES)} entries.', 2)
+        sys.exit(0)
+    elif (HOSTNAME or MAC_ADDR) and FW_RULE:
+        log(f'MAIN => Running update for {HOSTNAME}.', 2)
+        run(hostname=HOSTNAME, mac=MAC_ADDR, fw_rule=FW_RULE)
+        sys.exit(0)
+    else:
+        print(HELPMSG)
+        log(f'MAIN => No targets found. Did you specify a target?', 0)
+        sys.exit(2)
+
 if __name__ == '__main__':
     argv = sys.argv[1:]
 
     try:
-        opts, args = getopt.getopt(argv, 'h:m:r:v:l:', ['hostname=', 'mac=', 'rule=', 'verbosity=', 'logpath=', 'help'])
+        opts, args = getopt.getopt(argv, 'h:m:r:a:v:l:', ['hostname=', 'mac=', 'rule=', 'all', 'verbosity=', 'logpath=', 'help'])
     except getopt.GetoptError:
         print(HELPMSG)
         sys.exit(2)
@@ -305,11 +465,11 @@ if __name__ == '__main__':
             print(HELPMSG)
             sys.exit(0)
         elif opt in ('-h', '--hostname'):
-            hostname = arg
+            HOSTNAME = arg
         elif opt in ('-m', '--mac'):
-            mac = arg
+            MAC_ADDR = arg
         elif opt in ('-r', '--rule'):
-            fw_rule = arg
+            FW_RULE = arg
         elif opt in ('-v', '--verbosity'):
             if arg in VERBOSITY_MODES.values():
                 level = {l: mode for l, mode in VERBOSITY_MODES.items() if mode == arg}
@@ -324,8 +484,15 @@ if __name__ == '__main__':
             else:
                 cwd = os.getcwd()
                 log(f'LOGGER => Invalid path for logpath `{arg}`. Setting to default (CWD) `{cwd}`', 0)
+        elif opt in('-a', '--all'):
+            prepare_multi(arg)
 
-    if (hostname or mac) and fw_rule:
+    if ALL:
+        prepare_multi(ALL)
+
+    if ((HOSTNAME or MAC_ADDR) and FW_RULE) or ENTRIES:
         main()
     else:
-        log(f'Missing options. Please specify using either environment variables or CLI parameters.', 0)
+        print(HELPMSG)
+        log(f'Missing parameters. Please specify using either environment variables or CLI parameters.', 0)
+        sys.exit(2)

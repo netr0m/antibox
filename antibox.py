@@ -9,7 +9,7 @@ import sys
 
 import requests
 
-from const import VERBOSITY_MODES, HELPMSG
+from const import HELPMSG, VERBOSITY_MODES
 
 USER = os.getenv('ALTIBOX_USER')
 PASS = os.getenv('ALTIBOX_PASS')

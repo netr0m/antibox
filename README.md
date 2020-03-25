@@ -33,14 +33,18 @@
 ### CLI
 ```bash
 $ python3 antibox.py --help
-antibox v0.2.0
-usage: antibox (-h <HOSTNAME> | -m <MAC_ADDRESS>) -r <RULE_NAME> [-v <(ERROR|INFO|DEBUG)>] [-l <PATH>] [--help]
+antibox v0.2.1
+usage: antibox (-h <HOSTNAME> | -m <MAC_ADDRESS>) -r <RULE_NAME> [-a <LIST>] [-v <(ERROR|INFO|DEBUG)>] [-l <PATH>] [--help]
 
-    Get current IP of device
+    Get current IP of device:
       -h, --hostname          By hostname
       -m, --mac               By MAC address
 
       -r, --rule              Name of the rule to modify
+
+    Multiple entries
+      -a, --all               A comma-separated list of devices and rules in the following format:
+                                `[hostname]|[mac]|rule`. E.g. `debian||vpn_rule,|raspberry|plex_rule`.
 
       -v, --verbosity         Set the verbosity.
                                 Available options: [ERROR, INFO, DEBUG]
@@ -51,17 +55,29 @@ usage: antibox (-h <HOSTNAME> | -m <MAC_ADDRESS>) -r <RULE_NAME> [-v <(ERROR|INF
 
 ```bash
 # Set the internal IP of the firewall rule `rule` to the IP of device `hostname`
-$ python3 antibox.py -h <hostname> -r <rule>
+$ python3 antibox.py -h <HOSTNAME> -r <RULE>
 # Same, but with the MAC address of the device
-$ python3 antibox.py -m <mac> -r <rule>
+$ python3 antibox.py -m <MAC> -r <RULE>
 
 # Change the verbosity
-$ python3 antibox.py -h <hostname> -r <rule> -v DEBUG
+$ python3 antibox.py -h <HOSTNAME> -r <RULE> -v DEBUG
 
 # Log to file
-$ python3 antibox.py -h <hostname> -r <rule> -v DEBUG -l /path/to/dir
+$ python3 antibox.py -h <HOSTNAME> -r <RULE> -v DEBUG -l /path/to/dir
 
 # Get hostname/MAC and rule from environment variables:
+$ source vars.env
+$ python3 antibox.py
+
+# Update multiple rules
+$ python3 antibox.py -a '<HOSTNAME>|<MAC>|<rule>'
+# The argument for `-a` must follow the pattern, including empty pipes (`|`).
+$ python3 antibox.py -a 'mediaserver||media_plex,|4A:DA:61:1C:B5:24|admin_vpn'
+
+# Update the firewall rule named `media_plex`, set its internal IP to the IP address of the device `mediaserver`.
+$ python3 antibox.py -a 'mediaserver||media_plex'
+# or get values from environment variables:
+$ sed -i 's/ANTIBOX_ALL=/ANTIBOX_ALL="mediaserver||media_plex,|4A:DA:61:1C:B5:24|admin_vpn"/g' vars.env
 $ source vars.env
 $ python3 antibox.py
 ```
@@ -109,7 +125,6 @@ $ docker build -t antibox .
 
 **With Cron**
 - [Dockerfile](/Dockerfile.cron)
-
 *If you wish to change the frequency, modify the file [crontab](/crontab) before building.*
 ```bash
 $ docker build -t antibox:cron -f Dockerfile.cron .

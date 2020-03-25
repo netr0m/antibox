@@ -1,0 +1,19 @@
+FROM python
+
+LABEL maintainer="Morten Amundsen <me@mortenamundsen.me>"
+
+RUN apt-get update && apt-get -y install cron busybox
+
+RUN mkdir -p /usr/src/app
+WORKDIR /usr/src/app
+
+COPY requirements.txt /usr/src/app/
+RUN pip install -r requirements.txt
+
+COPY . /usr/src/app
+
+RUN chmod 0644 /usr/src/app
+COPY crontab /etc/crontab
+RUN chmod 600 /etc/crontab
+
+CMD env >> /etc/environment && busybox syslogd && cron -f

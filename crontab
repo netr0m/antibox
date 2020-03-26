@@ -1,2 +1,2 @@
 # min	hour	day	    month	weekday	command
-*/10    *       *       *       *       /usr/local/bin/python /usr/src/app/antibox.py
+*/30    *       *       *       *       /usr/local/bin/python /usr/src/app/antibox.py

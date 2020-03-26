@@ -86,17 +86,20 @@ $ python3 antibox.py
 [crontab guru](https://crontab.guru/)
 1. **Every 10th minute:** */10 * * * *
 2. **Every day at 1 AM:** 0 1 * * *
+
 ```bash
 $ chmod a+x antibox.py
 $ crontab -e
-# Run every 10th minute, on-host:
-*/10 * * * * /usr/local/bin/python <path_to_dir>/antibox.py
+# Run every 30th minute, on-host:
+*/30 * * * * /usr/local/bin/python <path_to_dir>/antibox.py
 # Run every day at 1 AM, containerized:
 0 1 * * * docker run --rm -d --name antibox --env-file list.env mortea15/antibox
 ```
 
 ### Docker
 **Runs the script in a Docker container for a one-time execution**
+- [Dockerhub](https://hub.docker.com/r/mortea15/antibox)
+
 ```bash
 # Get params from the file `list.env`
 $ docker run --rm -d --name antibox --env-file list.env mortea15/antibox
@@ -110,15 +113,19 @@ $ docker-compose up -d
 
 #### Cron in Docker
 **Runs a Docker container pre-configured with Cron**
-- Executes the script every 10th minute
+
+- Executes the script every 30th minute
 - Requires environment variables to be provided using `list.env` (see [list.env.example](/list.env.example))
 ```bash
 $ docker run --rm -d --name antibox --env-file list.env mortea15/antibox:cron
+# Check the logs for output (will be blank until first execution)
+$ docker logs -f antibox
 ```
 
 #### Build the images from source
 **Antibox**
 - [Dockerfile](/Dockerfile)
+
 ```bash
 $ docker build -t antibox .
 ```
